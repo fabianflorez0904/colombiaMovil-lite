@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Terminales – Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="mb-5 text-center">
+    <h1 class="display-5 fw-bold mb-2"><i class="bi bi-truck-front-fill"></i> Dashboard de Terminales</h1>
+    <p class="text-muted">Visualiza y gestiona la información de los terminales en Colombia.</p>
+  </div>
+
+  <!-- Mapa de terminales -->
+  <div class="mb-5">
+    <h3 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Mapa de Terminales</h3>
+    <div class="position-relative">
+      <div id="map" class="rounded shadow-sm border" style="height: 500px;"></div>
+    </div>
+  </div>
+
+  <hr class="my-5"/>
+
+  <!-- Lista de terminales -->
+  <div class="mb-4">
+    <h3 class="mb-3"><i class="bi bi-list-ul"></i> Terminales Disponibles</h3>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for t in terminales %}
+    <div class="col">
+      <div class="card h-100 border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title fw-semibold">
+            <i class="bi bi-building"></i> {{ t.municipio.nombre_municipio }} – Terminal #{{ t.id }}
+          </h5>
+          <p class="card-text mb-1 text-muted"><i class="bi bi-geo-alt"></i> {{ t.municipio.nombre_departamento }}</p>
+          <p class="mb-1"><strong>Capacidad:</strong> {{ t.capacidad }}</p>
+          <p class="mb-1"><strong>Ocupación actual:</strong> {{ t.ocupacion }}</p>
+          <p class="mb-3"><strong>Cupos disponibles:</strong> {{ t.cupos_disponibles }}</p>
+          <a href="{% url 'movimientos:terminal_dashboard' t.id %}" class="btn btn-outline-primary w-100">
+            <i class="bi bi-box-arrow-in-right"></i> Ir al Terminal
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Leaflet CSS/JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const terminales = {{ terminales_geojson|safe }};
+
+  // Inicializar mapa
+  const map = L.map('map', {
+    center: [4.6097, -74.0817],
+    zoom: 8,
+    scrollWheelZoom: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Agrupación para ajustar vista inicial
+  const markers = L.featureGroup();
+
+  terminales.forEach(t => {
+    const disponibles = t.capacidad - t.ocupacion;
+    const popup = `
+      <div class="fw-semibold mb-1">${t.nombre}</div>
+      <div class="text-muted mb-1">${t.municipio}</div>
+      <div><strong>Disponibles:</strong> ${disponibles} / ${t.capacidad}</div>
+      <a href="/dashboard/${t.id}/" class="btn btn-sm btn-outline-success mt-2 w-100">
+        <i class="bi bi-box-arrow-in-right"></i> Ir al Terminal
+      </a>
+    `;
+    const marker = L.marker([t.lat, t.lng]).addTo(map).bindPopup(popup);
+    markers.addLayer(marker);
+  });
+
+  // Centrar vista basada en todos los marcadores
+  map.fitBounds(markers.getBounds());
+
+  // Guardar los límites iniciales para el botón de recentrar
+  const vistaInicial = markers.getBounds();
+
+  // Botón de recentrado en bottomleft
+  L.Control.Recenter = L.Control.extend({
+    onAdd: function(map) {
+      const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+      btn.innerHTML = '<i class="bi bi-crosshair"></i>';
+      btn.title = 'Recentrar mapa';
+      btn.style.backgroundColor = '#fff';
+      btn.style.width = '40px';
+      btn.style.height = '40px';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+      btn.style.cursor = 'pointer';
+      btn.onclick = () => map.fitBounds(vistaInicial);
+      L.DomEvent.disableClickPropagation(btn);
+      return btn;
+    },
+    onRemove: function(map) {}
+  });
+
+  L.control.recenter = function(opts) {
+    return new L.Control.Recenter(opts);
+  };
+
+  L.control.recenter({ position: 'bottomleft' }).addTo(map);
+</script>
+{% endblock %}

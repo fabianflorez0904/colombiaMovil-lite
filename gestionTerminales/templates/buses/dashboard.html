@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dashboard de Buses{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="fw-bold text-primary"><i class="bi bi-bus-front-fill"></i> Dashboard de Buses</h1>
+    <p class="text-muted">Visualización organizada de los buses según su actividad operativa.</p>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for bus in buses %}
+    <div class="col">
+      <div class="card h-100 border-0 shadow rounded-4 overflow-hidden">
+        <img src="{% static 'Bus1.png' %}" class="card-img-top img-fluid" style="height: 180px; object-fit: cover;" alt="Bus {{ bus.placa }}">
+        <div class="card-body">
+          <h5 class="card-title text-primary d-flex align-items-center">
+            <i class="bi bi-truck-front-fill me-2"></i> {{ bus.placa }}
+          </h5>
+          <ul class="list-unstyled mt-3">
+            <li><strong>Viajes realizados:</strong> {{ bus.num_viajes }}</li>
+            <li>
+              <strong>Terminal actual:</strong>
+              {% if bus.terminal_actual %}
+                {{ bus.terminal_actual.municipio.nombre_municipio }} ({{ bus.terminal_actual.municipio.nombre_departamento }})
+              {% else %}
+                <span class="text-muted">En carretera</span>
+              {% endif %}
+            </li>
+          </ul>
+        </div>
+        <div class="card-footer bg-light border-0 d-flex justify-content-end">
+          <a href="{% url 'movimientos:detalle_bus' bus.id %}" class="btn btn-sm btn-outline-primary">
+            Ver detalles <i class="bi bi-eye-fill ms-1"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col">
+      <div class="alert alert-info">No hay buses registrados aún.</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ terminal.municipio.nombre_municipio }} – Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="display-5 fw-bold mb-1">
+        <i class="bi bi-building-fill"></i> Terminal de {{ terminal.municipio.nombre_municipio }}
+      </h1>
+      <p class="text-muted mb-0">Dashboard de control y monitoreo de operaciones.</p>
+    </div>
+    <div>
+      <a href="{% url 'movimientos:terminales_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left-circle"></i> Volver al Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Mapa dinámico del terminal -->
+  <div class="my-5">
+    <h3 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Ubicación del Terminal</h3>
+    <div id="map" class="rounded shadow-sm border" style="height: 400px;"></div>
+  </div>
+  <!-- KPIs -->
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4 mb-5">
+
+    <!-- Capacidad total -->
+    <div class="col">
+      <div class="card text-bg-primary shadow-sm h-100 text-center">
+        <div class="card-body">
+          <i class="bi bi-person-fill fa-2x mb-2"></i>
+          <h6 class="card-title">Capacidad Total</h6>
+          <p class="fs-4 fw-bold">{{ terminal.capacidad }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ocupación actual -->
+    <div class="col">
+      <div class="card text-bg-warning shadow-sm h-100 text-center">
+        <div class="card-body">
+          <i class="bi bi-people-fill fa-2x mb-2"></i>
+          <h6 class="card-title">Ocupación Actual</h6>
+          <p class="fs-4 fw-bold">{{ terminal.ocupacion_actual }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cupos disponibles -->
+    <div class="col">
+      <div class="card {% if terminal.cupos_disponibles == 0 %}text-bg-danger{% else %}text-bg-success{% endif %} shadow-sm h-100 text-center">
+        <div class="card-body">
+          <i class="bi bi-check-circle-fill fa-2x mb-2"></i>
+          <h6 class="card-title">Cupos Disponibles</h6>
+          <p class="fs-4 fw-bold">{{ terminal.cupos_disponibles }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Viajes de salida -->
+    <div class="col">
+      <div class="card text-bg-info shadow-sm h-100 text-center">
+        <div class="card-body">
+          <i class="bi bi-send-fill fa-2x mb-2"></i>
+          <h6 class="card-title">Viajes de Salida</h6>
+          <p class="fs-4 fw-bold">{{ viajes_origen }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Viajes de llegada -->
+    <div class="col">
+      <div class="card text-bg-secondary shadow-sm h-100 text-center">
+        <div class="card-body">
+          <i class="bi bi-arrow-down-circle-fill fa-2x mb-2"></i>
+          <h6 class="card-title">Viajes de Llegada</h6>
+          <p class="fs-4 fw-bold">{{ viajes_destino }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buses en terminal -->
+  <div class="mb-4">
+    <h3 class="mb-3"><i class="bi bi-bus-front-fill"></i> Buses en Terminal</h3>
+  </div>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for bus in buses %}
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <img src="{% static 'Bus1.png' %}" class="card-img-top" alt="Bus">
+        <div class="card-body d-flex flex-column justify-content-between">
+          <div>
+            <h5 class="card-title"><i class="bi bi-truck-front"></i> {{ bus.placa }}</h5>
+            <p class="text-muted mb-3">Bus disponible en la terminal.</p>
+          </div>
+          <a href="{% url 'movimientos:detalle_bus' bus.id %}" class="btn btn-outline-success">
+            <i class="bi bi-eye-fill"></i> Ver detalles 
+          </a>
+          <a href="{% url 'movimientos:crear_ruta' terminal.id bus.id %}" class="btn btn-outline-primary">
+            <i class="bi bi-signpost"></i> Generar Ruta
+          </a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col">
+      <div class="alert alert-warning w-100 text-center">
+        No hay buses en esta terminal actualmente.
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <!-- Historial de movimientos de salida -->
+  <div class="my-5">
+    <h3 class="mb-3"><i class="bi bi-clock-history"></i> Viajes que salieron de este terminal</h3>
+    {% if movimientos_salientes %}
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Bus</th>
+            <th>Salida</th>
+            <th>Llegada</th>
+            <th>Duración</th>
+            <th>Distancia</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimientos_salientes %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ m.origen.municipio.nombre_municipio }}</td>
+            <td>
+              <a href="{% url 'movimientos:terminal_dashboard' m.destino.id %}">
+                {{ m.destino.municipio.nombre_municipio }}
+              </a>
+            </td>
+            <td>
+              <a href="{% url 'movimientos:detalle_bus' m.bus.id %}">
+                {{ m.bus.placa }}
+              </a>
+            </td>
+            <td>{{ m.hora_salida|date:"d/m/Y H:i" }}</td>
+            <td>{{ m.hora_llegada|date:"d/m/Y H:i" }}</td>
+            <td>{{ m.duracion_estimada }}</td>
+            <td>{{ m.distancia_km }} km</td>
+            <td>
+              <a href="{% url 'movimientos:detalle_movimiento' m.id %}" class="btn btn-sm btn-outline-primary">
+                Ver <i class="bi bi-eye-fill"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">Este terminal aún no tiene movimientos de salida registrados.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const coords = [{{ terminal.ubicacion.y }}, {{ terminal.ubicacion.x }}];
+  const map = L.map('map', {
+    center: coords,
+    zoom: 13,
+    scrollWheelZoom: false,
+    dragging: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    zoomControl: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const popup = `
+    <div class="fw-semibold mb-1">Terminal {{ terminal.id }}</div>
+    <div class="text-muted mb-1">{{ terminal.municipio.nombre_municipio }} ({{ terminal.municipio.nombre_departamento }})</div>
+    <div><strong>Disponibles:</strong> {{ terminal.cupos_disponibles }} / {{ terminal.capacidad }}</div>
+    <a href="{% url 'movimientos:terminal_dashboard' terminal.id %}" class="btn btn-sm btn-outline-success mt-2 w-100">
+      <i class="bi bi-box-arrow-in-right"></i> Ir al Terminal
+    </a>
+  `;
+
+  L.marker(coords).addTo(map).bindPopup(popup).openPopup();
+</script>
+
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Detalle del Bus {{ bus.placa }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row g-4">
+    <!-- Tarjeta del Bus y Mapa -->
+    <div class="col-lg-12">
+      <div class="d-flex flex-column flex-lg-row align-items-stretch gap-4">
+        
+        <!-- Tarjeta del Bus -->
+        <div class="card shadow-sm border-0 flex-fill" style="max-width: 400px;">
+          <img src="{% static 'Bus1.png' %}" class="card-img-top" alt="Bus" style="height: 200px; object-fit: cover;">
+          <div class="card-body">
+            <h5 class="card-title text-primary fw-bold"><i class="bi bi-bus-front-fill"></i> {{ bus.placa }}</h5>
+            <p><strong>Total de viajes:</strong> {{ movimientos|length }}</p>
+            <p>
+              <strong>Ubicación actual:</strong><br>
+              {% if bus.terminal_actual %}
+                {{ bus.terminal_actual.municipio.nombre_municipio }} ({{ bus.terminal_actual.municipio.nombre_departamento }})
+              {% else %}
+                <span class="text-muted">En carretera</span>
+              {% endif %}
+            </p>
+            <a href="{% url 'movimientos:crear_ruta' bus.terminal_actual.id bus.id %}" class="btn btn-outline-primary w-100">
+              <i class="bi bi-signpost"></i> Generar Ruta
+            </a>
+          </div>
+        </div>
+
+        <!-- Mapa Terminal -->
+        {% if bus.terminal_actual %}
+        <div class="card shadow-sm border-0 flex-fill w-100">
+          <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-geo-alt-fill"></i> Mapa del Terminal Actual</h5>
+            <div id="map" class="rounded border" style="height: 300px;"></div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Historial de Movimientos -->
+    <div class="col-lg-12">
+      <h4 class="mt-5 mb-3"><i class="bi bi-clock-history"></i> Historial de Movimientos</h4>
+      {% if movimientos %}
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Salida</th>
+              <th>Llegada</th>
+              <th>Duración</th>
+              <th>Distancia</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in movimientos %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ m.origen.municipio.nombre_municipio }}</td>
+              <td>{{ m.destino.municipio.nombre_municipio }}</td>
+              <td>{{ m.hora_salida|date:"d/m/Y H:i" }}</td>
+              <td>{{ m.hora_llegada|date:"d/m/Y H:i" }}</td>
+              <td>{{ m.duracion_estimada }}</td>
+              <td>{{ m.distancia_km }} km</td>
+              <td>
+                <a href="{% url 'movimientos:detalle_movimiento' m.id %}" class="btn btn-sm btn-outline-primary">
+                  Ver <i class="bi bi-eye-fill"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-info">Este bus aún no ha realizado ningún viaje.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if bus.terminal_actual %}
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const terminal = {
+    id: {{ bus.terminal_actual.id }},
+    nombre: "Terminal {{ bus.terminal_actual.id }}",
+    municipio: "{{ bus.terminal_actual.municipio.nombre_municipio }} ({{ bus.terminal_actual.municipio.nombre_departamento }})",
+    lat: {{ bus.terminal_actual.ubicacion.y }},
+    lng: {{ bus.terminal_actual.ubicacion.x }},
+    capacidad: {{ bus.terminal_actual.capacidad }},
+    ocupacion: {{ bus.terminal_actual.ocupacion_actual }}
+  };
+
+  const disponibles = terminal.capacidad - terminal.ocupacion;
+
+  const map = L.map('map', {
+    center: [terminal.lat, terminal.lng],
+    zoom: 13,
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    tap: false,
+    touchZoom: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const popup = `
+    <div class="fw-semibold mb-1">${terminal.nombre}</div>
+    <div class="text-muted mb-1">${terminal.municipio}</div>
+    <div><strong>Disponibles:</strong> ${disponibles} / ${terminal.capacidad}</div>
+    <a href="/dashboard/${terminal.id}/" class="btn btn-sm btn-outline-success mt-2 w-100">
+      <i class="bi bi-box-arrow-in-right"></i> Ir al Terminal
+    </a>
+  `;
+
+  L.marker([terminal.lat, terminal.lng])
+    .addTo(map)
+    .bindPopup(popup)
+    .openPopup();
+</script>
+{% endif %}
+{% endblock %}

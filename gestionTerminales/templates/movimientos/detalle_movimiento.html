@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Movimiento Guardado{% endblock %}
+
+
+{% block content %}
+<div class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="fw-bold text-primary">
+        <i class="bi bi-geo-alt-fill"></i> Detalle del Movimiento
+      </h1>
+      <p class="text-muted">Visualización completa del recorrido registrado.</p>
+      
+  </div>
+
+  <!-- Contenedor de dos columnas: Detalles (izquierda) y Mapa (derecha) -->
+  <div class="row">
+    <!-- Columna izquierda: Detalles -->
+    <div class="col-lg-5 mb-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title text-primary mb-3">📋 Detalles del Movimiento</h5>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item"><strong>Terminal Origen:</strong> 
+              <a href="{% url 'movimientos:terminal_dashboard' movimiento.origen.id %}">
+                {{ movimiento.origen.municipio }}
+              </a>
+            </li>
+
+            <li class="list-group-item"><strong>Terminal Destino:</strong> 
+              <a href="{% url 'movimientos:terminal_dashboard' movimiento.destino.id %}">
+                {{ movimiento.destino.municipio }}
+              </a>
+            </li>
+            <li class="list-group-item"><strong>Bus:</strong> 
+              <a href="{% url 'movimientos:detalle_bus' movimiento.bus.id %}">
+                {{ movimiento.bus.placa }}
+              </a>
+            </li>
+            <li class="list-group-item"><strong>Hora de Salida:</strong> {{ movimiento.hora_salida|date:"d/m/Y H:i" }}</li>
+            <li class="list-group-item"><strong>Hora de Llegada:</strong> {{ movimiento.hora_llegada|date:"d/m/Y H:i" }}</li>
+            <li class="list-group-item"><strong>Duración:</strong> {{ movimiento.duracion_estimada }}</li>
+            <li class="list-group-item"><strong>Distancia:</strong> {{ movimiento.distancia_km }} km</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna derecha: Mapa -->
+    <div class="col-lg-7 mb-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title text-primary mb-3"><i class="bi bi-map-fill"></i> Mapa del Movimiento</h5>
+          <div id="map" class="rounded border" style="height: 450px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+ <!-- Botones de navegación -->
+  <div class="text-center mt-4">
+    <!-- Botón para volver -->
+    <a href="{% url 'movimientos:terminales_dashboard' %}" class="btn btn-outline-primary btn-lg mb-2">
+      <i class="bi bi-arrow-left-circle"></i> Volver al Dashboard
+    </a>
+
+    <!-- Botón para gestionar terminal origen -->
+    <a href="{% url 'movimientos:terminal_dashboard' movimiento.origen.id %}" class="btn btn-outline-success btn-lg mb-2">
+      <i class="bi bi-gear-fill"></i> Gestionar Terminal Origen
+    </a>
+
+    <!-- Botón para gestionar terminal destino -->
+    <a href="{% url 'movimientos:detalle_bus' movimiento.bus.id %}" class="btn btn-outline-success btn-lg mb-2">
+      <i class="bi bi-gear-fill"></i> Gestionar Terminal Destino
+    </a>
+  </div>
+</div>
+
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const origen = [{{ movimiento.origen.ubicacion.y }}, {{ movimiento.origen.ubicacion.x }}];
+  const destino = [{{ movimiento.destino.ubicacion.y }}, {{ movimiento.destino.ubicacion.x }}];
+  const ruta = {{ movimiento.ruta_geojson|safe }}
+
+  // Inicializar mapa SIN scroll con el mouse
+  const map = L.map('map', {
+    center: origen,
+    zoom: 8,
+    scrollWheelZoom: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Añadir marcadores
+  L.marker(origen).bindPopup("Terminal Origen").addTo(map);
+  L.marker(destino).bindPopup("Terminal Destino").addTo(map);
+
+  // Dibujar la línea de la ruta
+  const linea = L.geoJSON(ruta, {
+    style: { color: 'blue', weight: 4 }
+  }).addTo(map);
+
+  // Guardar los límites reales de la ruta como vista inicial
+  const vistaInicial = linea.getBounds();
+  map.fitBounds(vistaInicial); // Centrar y ajustar zoom basado en la ruta
+
+  // Botón para recentrar
+  L.Control.Recenter = L.Control.extend({
+    onAdd: function(map) {
+      const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control leaflet-control-custom');
+      btn.innerHTML = '<i class="bi bi-crosshair"></i>';
+      btn.title = 'Recentrar mapa';
+      btn.style.backgroundColor = '#fff';
+      btn.style.width = '50px';
+      btn.style.height = '50px';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+      btn.style.cursor = 'pointer';
+
+      btn.onclick = () => {
+        map.fitBounds(vistaInicial);  // Centra y aplica zoom adecuado
+      };
+
+      // Prevenir que el botón active el scroll en el mapa
+      L.DomEvent.disableClickPropagation(btn);
+      return btn;
+    },
+    onRemove: function(map) {}
+  });
+
+  L.control.recenter = function(opts) {
+    return new L.Control.Recenter(opts);
+  };
+
+  L.control.recenter({ position: 'bottomleft' }).addTo(map);
+</script>
+
+{% endblock %}
